@@ -1,0 +1,962 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Korean Learning App</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&amp;family=Outfit:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+  <script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: {
+        korean: ['Noto Sans KR', 'sans-serif'],
+        body: ['Outfit', 'sans-serif']
+      }
+    }
+  }
+}
+</script>
+  <style>
+* { -webkit-tap-highlight-color: transparent; }
+.tab-active { position: relative; }
+.tab-active::after { content:''; position:absolute; bottom:-2px; left:50%; transform:translateX(-50%); width:20px; height:3px; border-radius:2px; background: currentColor; }
+.card-hover { transition: transform 0.2s, box-shadow 0.2s; }
+.card-hover:hover { transform: translateY(-2px); }
+.fade-in { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.flip-card { perspective: 1000px; }
+.flip-card-inner { transition: transform 0.5s; transform-style: preserve-3d; }
+.flip-card.flipped .flip-card-inner { transform: rotateY(180deg); }
+.flip-card-front, .flip-card-back { backface-visibility: hidden; }
+.flip-card-back { transform: rotateY(180deg); }
+.progress-ring { transition: stroke-dashoffset 0.5s ease; }
+</style>
+  <style>body { box-sizing: border-box; }</style>
+ <script src="/_sdk/telemetry_sdk.js"></script></head>
+ <body class="h-full font-body bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 overflow-hidden">
+  <div id="app" class="h-full w-full flex flex-col"><!-- Header -->
+   <header id="header" class="flex-shrink-0 px-4 py-3 flex items-center justify-between bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm">
+    <div class="flex items-center gap-2"><span class="text-2xl">🇰🇷</span>
+     <h1 id="app-title" class="text-lg font-bold font-korean">한국어 학습</h1>
+    </div>
+    <div class="flex items-center gap-3"><span id="xp-display" class="text-sm font-semibold text-amber-500 flex items-center gap-1">⚡ <span id="xp-val">0</span> XP</span> <span id="streak-display" class="text-sm font-semibold text-orange-500 flex items-center gap-1">🔥 <span id="streak-val">0</span></span> <button id="theme-toggle" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700" aria-label="Toggle theme"> <i data-lucide="sun" class="w-5 h-5 dark:hidden"></i> <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i> </button>
+    </div>
+   </header><!-- Main Content -->
+   <main id="main-content" class="flex-1 overflow-y-auto">
+   </main><!-- Bottom Navigation -->
+   <nav class="flex-shrink-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-2 py-2 safe-bottom">
+    <div class="flex justify-around max-w-lg mx-auto"><button class="nav-btn flex flex-col items-center gap-0.5 p-2 rounded-lg text-xs" data-page="home"> <i data-lucide="home" class="w-5 h-5"></i><span>Home</span> </button> <button class="nav-btn flex flex-col items-center gap-0.5 p-2 rounded-lg text-xs" data-page="lessons"> <i data-lucide="book-open" class="w-5 h-5"></i><span>Lessons</span> </button> <button class="nav-btn flex flex-col items-center gap-0.5 p-2 rounded-lg text-xs" data-page="practice"> <i data-lucide="pen-tool" class="w-5 h-5"></i><span>Practice</span> </button> <button class="nav-btn flex flex-col items-center gap-0.5 p-2 rounded-lg text-xs" data-page="review"> <i data-lucide="rotate-ccw" class="w-5 h-5"></i><span>Review</span> </button> <button class="nav-btn flex flex-col items-center gap-0.5 p-2 rounded-lg text-xs" data-page="progress"> <i data-lucide="bar-chart-2" class="w-5 h-5"></i><span>Progress</span> </button>
+    </div>
+   </nav>
+  </div>
+  <script>
+// ===== LESSON DATA =====
+const LESSONS = [
+  { id:1, title:"소개", subtitle:"Introduction", emoji:"👋", topics:"Greetings, self-introduction", grammar:["입니다","아닙니다","은/는"],
+    vocab:[
+      {kr:"안녕하세요",rom:"annyeonghaseyo",vi:"Xin chào",ex:"안녕하세요! 만나서 반갑습니다."},
+      {kr:"저",rom:"jeo",vi:"Tôi (lịch sự)",ex:"저는 학생입니다."},
+      {kr:"이름",rom:"ireum",vi:"Tên",ex:"이름이 뭐예요?"},
+      {kr:"한국",rom:"hanguk",vi:"Hàn Quốc",ex:"저는 한국 사람입니다."},
+      {kr:"베트남",rom:"beteunam",vi:"Việt Nam",ex:"저는 베트남 사람입니다."},
+      {kr:"학생",rom:"haksaeng",vi:"Học sinh",ex:"저는 학생입니다."},
+      {kr:"선생님",rom:"seonsaengnim",vi:"Giáo viên",ex:"선생님은 한국 사람입니다."},
+      {kr:"네",rom:"ne",vi:"Vâng/Dạ",ex:"네, 맞습니다."},
+      {kr:"아니요",rom:"aniyo",vi:"Không",ex:"아니요, 학생이 아닙니다."},
+      {kr:"감사합니다",rom:"gamsahamnida",vi:"Cảm ơn",ex:"감사합니다!"},
+      {kr:"만나서 반갑습니다",rom:"mannaseo bangapseumnida",vi:"Rất vui được gặp",ex:"만나서 반갑습니다!"},
+      {kr:"사람",rom:"saram",vi:"Người",ex:"그 사람은 학생입니다."},
+      {kr:"직업",rom:"jigeop",vi:"Nghề nghiệp",ex:"직업이 뭐예요?"},
+      {kr:"회사원",rom:"hoesawon",vi:"Nhân viên",ex:"저는 회사원입니다."},
+      {kr:"의사",rom:"uisa",vi:"Bác sĩ",ex:"그분은 의사입니다."}
+    ],
+    grammarDetail:[
+      {pattern:"N + 입니다",meaning:"là N (formal)",examples:["저는 학생입니다.","이것은 책입니다.","선생님입니다."]},
+      {pattern:"N + 이/가 아닙니다",meaning:"không phải là N",examples:["학생이 아닙니다.","한국 사람이 아닙니다.","의사가 아닙니다."]},
+      {pattern:"N + 은/는",meaning:"trợ từ chủ đề",examples:["저는 베트남 사람입니다.","이름은 민입니다.","선생님은 한국 사람입니다."]}
+    ]
+  },
+  { id:2, title:"학교", subtitle:"School", emoji:"🏫", topics:"School supplies, locations", grammar:["이/가","이것/그것/저것"],
+    vocab:[
+      {kr:"학교",rom:"hakgyo",vi:"Trường học",ex:"학교에 갑니다."},
+      {kr:"교실",rom:"gyosil",vi:"Lớp học",ex:"교실이 큽니다."},
+      {kr:"책",rom:"chaek",vi:"Sách",ex:"이것은 책입니다."},
+      {kr:"연필",rom:"yeonpil",vi:"Bút chì",ex:"연필이 있습니다."},
+      {kr:"가방",rom:"gabang",vi:"Cặp sách",ex:"가방이 큽니다."},
+      {kr:"의자",rom:"uija",vi:"Ghế",ex:"의자가 있습니다."},
+      {kr:"책상",rom:"chaeksang",vi:"Bàn học",ex:"책상 위에 책이 있습니다."},
+      {kr:"칠판",rom:"chilpan",vi:"Bảng đen",ex:"칠판이 큽니다."},
+      {kr:"공책",rom:"gongchaek",vi:"Vở",ex:"공책에 씁니다."},
+      {kr:"지우개",rom:"jiugae",vi:"Cục tẩy",ex:"지우개가 있습니까?"},
+      {kr:"컴퓨터",rom:"keompyuteo",vi:"Máy tính",ex:"컴퓨터가 있습니다."},
+      {kr:"도서관",rom:"doseogwan",vi:"Thư viện",ex:"도서관에서 공부합니다."},
+      {kr:"운동장",rom:"undongjang",vi:"Sân vận động",ex:"운동장이 넓습니다."},
+      {kr:"식당",rom:"sikdang",vi:"Nhà ăn",ex:"학교 식당에서 먹습니다."},
+      {kr:"선배",rom:"seonbae",vi:"Tiền bối",ex:"선배가 친절합니다."}
+    ],
+    grammarDetail:[
+      {pattern:"N + 이/가",meaning:"trợ từ chủ ngữ",examples:["책이 있습니다.","학생이 옵니다.","가방이 큽니다."]},
+      {pattern:"이것/그것/저것",meaning:"cái này/cái đó/cái kia",examples:["이것은 책입니다.","그것은 연필입니다.","저것은 가방입니다."]}
+    ]
+  },
+  { id:3, title:"가족", subtitle:"Family", emoji:"👨‍👩‍👧‍👦", topics:"Family members", grammar:["의","에게"],
+    vocab:[
+      {kr:"가족",rom:"gajok",vi:"Gia đình",ex:"우리 가족은 4명입니다."},
+      {kr:"아버지",rom:"abeoji",vi:"Bố",ex:"아버지는 회사원입니다."},
+      {kr:"어머니",rom:"eomeoni",vi:"Mẹ",ex:"어머니는 선생님입니다."},
+      {kr:"형",rom:"hyeong",vi:"Anh trai (nam nói)",ex:"형이 있습니다."},
+      {kr:"누나",rom:"nuna",vi:"Chị gái (nam nói)",ex:"누나는 대학생입니다."},
+      {kr:"오빠",rom:"oppa",vi:"Anh trai (nữ nói)",ex:"오빠가 요리합니다."},
+      {kr:"언니",rom:"eonni",vi:"Chị gái (nữ nói)",ex:"언니는 의사입니다."},
+      {kr:"동생",rom:"dongsaeng",vi:"Em",ex:"동생이 귀엽습니다."},
+      {kr:"할아버지",rom:"harabeoji",vi:"Ông",ex:"할아버지는 건강합니다."},
+      {kr:"할머니",rom:"halmeoni",vi:"Bà",ex:"할머니가 요리합니다."},
+      {kr:"아들",rom:"adeul",vi:"Con trai",ex:"아들이 학생입니다."},
+      {kr:"딸",rom:"ttal",vi:"Con gái",ex:"딸이 예쁩니다."},
+      {kr:"부모님",rom:"bumonim",vi:"Bố mẹ",ex:"부모님이 좋습니다."},
+      {kr:"남편",rom:"nampyeon",vi:"Chồng",ex:"남편은 의사입니다."},
+      {kr:"아내",rom:"anae",vi:"Vợ",ex:"아내는 선생님입니다."}
+    ],
+    grammarDetail:[
+      {pattern:"N + 의",meaning:"của (sở hữu)",examples:["저의 가족","어머니의 직업","한국의 음식"]},
+      {pattern:"N + 에게",meaning:"cho ai đó",examples:["동생에게 줍니다.","친구에게 전화합니다.","선생님에게 물어봅니다."]}
+    ]
+  },
+  { id:4, title:"날짜와 요일", subtitle:"Dates & Days", emoji:"📅", topics:"Dates, days, time", grammar:["Sino-Korean numbers","와/과","에"],
+    vocab:[
+      {kr:"월요일",rom:"woryoil",vi:"Thứ Hai",ex:"월요일에 학교에 갑니다."},
+      {kr:"화요일",rom:"hwayoil",vi:"Thứ Ba",ex:"화요일에 수업이 있습니다."},
+      {kr:"수요일",rom:"suyoil",vi:"Thứ Tư",ex:"수요일은 쉽니다."},
+      {kr:"목요일",rom:"mogyoil",vi:"Thứ Năm",ex:"목요일에 운동합니다."},
+      {kr:"금요일",rom:"geumyoil",vi:"Thứ Sáu",ex:"금요일이 좋습니다."},
+      {kr:"토요일",rom:"toyoil",vi:"Thứ Bảy",ex:"토요일에 쇼핑합니다."},
+      {kr:"일요일",rom:"iryoil",vi:"Chủ Nhật",ex:"일요일에 쉽니다."},
+      {kr:"오늘",rom:"oneul",vi:"Hôm nay",ex:"오늘은 월요일입니다."},
+      {kr:"내일",rom:"naeil",vi:"Ngày mai",ex:"내일 만납시다."},
+      {kr:"어제",rom:"eoje",vi:"Hôm qua",ex:"어제 공부했습니다."},
+      {kr:"일",rom:"il",vi:"Một (1)",ex:"일월은 1월입니다."},
+      {kr:"이",rom:"i",vi:"Hai (2)",ex:"이월은 2월입니다."},
+      {kr:"삼",rom:"sam",vi:"Ba (3)",ex:"삼월은 3월입니다."},
+      {kr:"시",rom:"si",vi:"Giờ",ex:"지금 세 시입니다."},
+      {kr:"분",rom:"bun",vi:"Phút",ex:"십 분 후에 만납시다."}
+    ],
+    grammarDetail:[
+      {pattern:"Sino-Korean: 일,이,삼...",meaning:"Số Hán-Hàn đếm ngày tháng",examples:["삼월 이십일일","이천이십사년","오월 오일"]},
+      {pattern:"N + 와/과",meaning:"và (nối danh từ)",examples:["월요일과 화요일","책과 연필","아버지와 어머니"]},
+      {pattern:"N + 에 (time)",meaning:"vào lúc/ngày",examples:["월요일에 갑니다.","세 시에 만납니다.","내일에 옵니다."]}
+    ]
+  },
+  { id:5, title:"물건 사기", subtitle:"Shopping", emoji:"🛒", topics:"Shopping, prices", grammar:["얼마","주세요"],
+    vocab:[
+      {kr:"얼마",rom:"eolma",vi:"Bao nhiêu",ex:"이것은 얼마입니까?"},
+      {kr:"원",rom:"won",vi:"Won (tiền)",ex:"천 원입니다."},
+      {kr:"비싸다",rom:"bissada",vi:"Đắt",ex:"이것은 비쌉니다."},
+      {kr:"싸다",rom:"ssada",vi:"Rẻ",ex:"이것은 쌉니다."},
+      {kr:"주세요",rom:"juseyo",vi:"Cho tôi",ex:"물 주세요."},
+      {kr:"사다",rom:"sada",vi:"Mua",ex:"옷을 삽니다."},
+      {kr:"옷",rom:"ot",vi:"Quần áo",ex:"새 옷을 샀습니다."},
+      {kr:"신발",rom:"sinbal",vi:"Giày",ex:"신발이 예쁩니다."},
+      {kr:"가게",rom:"gage",vi:"Cửa hàng",ex:"가게에 갑니다."},
+      {kr:"시장",rom:"sijang",vi:"Chợ",ex:"시장에서 삽니다."},
+      {kr:"카드",rom:"kadeu",vi:"Thẻ",ex:"카드로 계산합니다."},
+      {kr:"현금",rom:"hyeongeum",vi:"Tiền mặt",ex:"현금으로 주세요."},
+      {kr:"영수증",rom:"yeongsujeung",vi:"Hóa đơn",ex:"영수증 주세요."},
+      {kr:"크다",rom:"keuda",vi:"Lớn/To",ex:"이 옷은 큽니다."},
+      {kr:"작다",rom:"jakda",vi:"Nhỏ",ex:"이 신발은 작습니다."}
+    ],
+    grammarDetail:[
+      {pattern:"얼마입니까?",meaning:"Bao nhiêu tiền?",examples:["이것은 얼마입니까?","사과가 얼마입니까?","전부 얼마입니까?"]},
+      {pattern:"N + 주세요",meaning:"Cho tôi N",examples:["물 주세요.","이것 주세요.","영수증 주세요."]}
+    ]
+  },
+  { id:6, title:"음식", subtitle:"Food", emoji:"🍜", topics:"Korean food, ordering", grammar:["을/를","좋아하다"],
+    vocab:[
+      {kr:"밥",rom:"bap",vi:"Cơm",ex:"밥을 먹습니다."},
+      {kr:"김치",rom:"gimchi",vi:"Kim chi",ex:"김치가 맛있습니다."},
+      {kr:"불고기",rom:"bulgogi",vi:"Thịt nướng",ex:"불고기를 좋아합니다."},
+      {kr:"비빔밥",rom:"bibimbap",vi:"Cơm trộn",ex:"비빔밥 주세요."},
+      {kr:"라면",rom:"ramyeon",vi:"Mì ramen",ex:"라면을 먹습니다."},
+      {kr:"물",rom:"mul",vi:"Nước",ex:"물을 마십니다."},
+      {kr:"커피",rom:"keopi",vi:"Cà phê",ex:"커피를 마십니다."},
+      {kr:"맛있다",rom:"masitda",vi:"Ngon",ex:"이 음식은 맛있습니다."},
+      {kr:"맵다",rom:"maepda",vi:"Cay",ex:"김치는 맵습니다."},
+      {kr:"달다",rom:"dalda",vi:"Ngọt",ex:"케이크가 답니다."},
+      {kr:"먹다",rom:"meokda",vi:"Ăn",ex:"점심을 먹습니다."},
+      {kr:"마시다",rom:"masida",vi:"Uống",ex:"차를 마십니다."},
+      {kr:"식당",rom:"sikdang",vi:"Nhà hàng",ex:"식당에 갑니다."},
+      {kr:"메뉴",rom:"menyu",vi:"Menu",ex:"메뉴를 보여 주세요."},
+      {kr:"계산",rom:"gyesan",vi:"Tính tiền",ex:"계산해 주세요."}
+    ],
+    grammarDetail:[
+      {pattern:"N + 을/를",meaning:"trợ từ tân ngữ",examples:["밥을 먹습니다.","커피를 마십니다.","책을 읽습니다."]},
+      {pattern:"N + 을/를 좋아하다",meaning:"thích N",examples:["한국 음식을 좋아합니다.","커피를 좋아합니다.","김치를 좋아합니다."]}
+    ]
+  },
+  { id:7, title:"집", subtitle:"Home", emoji:"🏠", topics:"Rooms, furniture", grammar:["에 있다","에 없다"],
+    vocab:[
+      {kr:"집",rom:"jip",vi:"Nhà",ex:"집에 갑니다."},
+      {kr:"방",rom:"bang",vi:"Phòng",ex:"방이 큽니다."},
+      {kr:"부엌",rom:"bueok",vi:"Nhà bếp",ex:"부엌에서 요리합니다."},
+      {kr:"화장실",rom:"hwajangsil",vi:"Phòng tắm",ex:"화장실이 깨끗합니다."},
+      {kr:"거실",rom:"geosil",vi:"Phòng khách",ex:"거실에 TV가 있습니다."},
+      {kr:"침대",rom:"chimdae",vi:"Giường",ex:"침대가 편합니다."},
+      {kr:"소파",rom:"sopa",vi:"Sofa",ex:"소파에 앉습니다."},
+      {kr:"냉장고",rom:"naengjanggo",vi:"Tủ lạnh",ex:"냉장고에 물이 있습니다."},
+      {kr:"텔레비전",rom:"tellebijeon",vi:"TV",ex:"텔레비전을 봅니다."},
+      {kr:"창문",rom:"changmun",vi:"Cửa sổ",ex:"창문을 엽니다."},
+      {kr:"문",rom:"mun",vi:"Cửa",ex:"문을 닫습니다."},
+      {kr:"위",rom:"wi",vi:"Trên",ex:"책상 위에 있습니다."},
+      {kr:"아래",rom:"arae",vi:"Dưới",ex:"의자 아래에 있습니다."},
+      {kr:"옆",rom:"yeop",vi:"Bên cạnh",ex:"침대 옆에 있습니다."},
+      {kr:"안",rom:"an",vi:"Trong",ex:"방 안에 있습니다."}
+    ],
+    grammarDetail:[
+      {pattern:"N + 에 있다",meaning:"có ở N",examples:["책상 위에 있습니다.","방에 있습니다.","학교에 있습니다."]},
+      {pattern:"N + 에 없다",meaning:"không có ở N",examples:["집에 없습니다.","가방 안에 없습니다.","교실에 없습니다."]}
+    ]
+  },
+  { id:8, title:"일상생활", subtitle:"Daily Life", emoji:"⏰", topics:"Daily routines", grammar:["아/어요","안"],
+    vocab:[
+      {kr:"일어나다",rom:"ireonada",vi:"Thức dậy",ex:"아침에 일어납니다."},
+      {kr:"자다",rom:"jada",vi:"Ngủ",ex:"밤에 잡니다."},
+      {kr:"씻다",rom:"ssitda",vi:"Rửa/Tắm",ex:"아침에 씻습니다."},
+      {kr:"먹다",rom:"meokda",vi:"Ăn",ex:"아침을 먹습니다."},
+      {kr:"가다",rom:"gada",vi:"Đi",ex:"학교에 갑니다."},
+      {kr:"오다",rom:"oda",vi:"Đến",ex:"집에 옵니다."},
+      {kr:"공부하다",rom:"gongbuhada",vi:"Học",ex:"한국어를 공부합니다."},
+      {kr:"운동하다",rom:"undonghada",vi:"Tập thể dục",ex:"아침에 운동합니다."},
+      {kr:"일하다",rom:"ilhada",vi:"Làm việc",ex:"회사에서 일합니다."},
+      {kr:"쉬다",rom:"swida",vi:"Nghỉ",ex:"일요일에 쉽니다."},
+      {kr:"아침",rom:"achim",vi:"Buổi sáng",ex:"아침에 일어납니다."},
+      {kr:"점심",rom:"jeomsim",vi:"Buổi trưa",ex:"점심을 먹습니다."},
+      {kr:"저녁",rom:"jeonyeok",vi:"Buổi tối",ex:"저녁에 쉽니다."},
+      {kr:"밤",rom:"bam",vi:"Ban đêm",ex:"밤에 잡니다."},
+      {kr:"보통",rom:"botong",vi:"Thường",ex:"보통 7시에 일어납니다."}
+    ],
+    grammarDetail:[
+      {pattern:"V + 아/어요",meaning:"thể lịch sự không trang trọng",examples:["가요 (đi)","먹어요 (ăn)","공부해요 (học)"]},
+      {pattern:"안 + V",meaning:"phủ định (không)",examples:["안 갑니다.","안 먹습니다.","안 좋습니다."]}
+    ]
+  },
+  { id:9, title:"날씨", subtitle:"Weather", emoji:"🌤️", topics:"Weather, seasons", grammar:["고","그래서"],
+    vocab:[
+      {kr:"날씨",rom:"nalssi",vi:"Thời tiết",ex:"오늘 날씨가 좋습니다."},
+      {kr:"덥다",rom:"deopda",vi:"Nóng",ex:"여름은 덥습니다."},
+      {kr:"춥다",rom:"chupda",vi:"Lạnh",ex:"겨울은 춥습니다."},
+      {kr:"비",rom:"bi",vi:"Mưa",ex:"비가 옵니다."},
+      {kr:"눈",rom:"nun",vi:"Tuyết",ex:"눈이 옵니다."},
+      {kr:"바람",rom:"baram",vi:"Gió",ex:"바람이 붑니다."},
+      {kr:"봄",rom:"bom",vi:"Mùa xuân",ex:"봄에 꽃이 핍니다."},
+      {kr:"여름",rom:"yeoreum",vi:"Mùa hè",ex:"여름은 덥습니다."},
+      {kr:"가을",rom:"gaeul",vi:"Mùa thu",ex:"가을은 시원합니다."},
+      {kr:"겨울",rom:"gyeoul",vi:"Mùa đông",ex:"겨울은 춥습니다."},
+      {kr:"맑다",rom:"malkda",vi:"Trong/Quang",ex:"하늘이 맑습니다."},
+      {kr:"흐리다",rom:"heurida",vi:"Âm u",ex:"오늘은 흐립니다."},
+      {kr:"시원하다",rom:"siwonhada",vi:"Mát mẻ",ex:"가을은 시원합니다."},
+      {kr:"따뜻하다",rom:"ttatteuthada",vi:"Ấm áp",ex:"봄은 따뜻합니다."},
+      {kr:"우산",rom:"usan",vi:"Ô/Dù",ex:"우산을 가져갑니다."}
+    ],
+    grammarDetail:[
+      {pattern:"V/A + 고",meaning:"và (nối mệnh đề)",examples:["덥고 습합니다.","크고 좋습니다.","먹고 갑니다."]},
+      {pattern:"그래서",meaning:"vì vậy, cho nên",examples:["비가 옵니다. 그래서 우산을 가져갑니다.","춥습니다. 그래서 옷을 입습니다.","피곤합니다. 그래서 쉽니다."]}
+    ]
+  },
+  { id:10, title:"약속", subtitle:"Appointments", emoji:"📞", topics:"Scheduling, invitations", grammar:["ㄹ까요?","읍시다"],
+    vocab:[
+      {kr:"약속",rom:"yaksok",vi:"Hẹn",ex:"내일 약속이 있습니다."},
+      {kr:"만나다",rom:"mannada",vi:"Gặp",ex:"친구를 만납니다."},
+      {kr:"전화",rom:"jeonhwa",vi:"Điện thoại",ex:"전화합니다."},
+      {kr:"시간",rom:"sigan",vi:"Thời gian",ex:"시간이 있습니까?"},
+      {kr:"언제",rom:"eonje",vi:"Khi nào",ex:"언제 만날까요?"},
+      {kr:"어디",rom:"eodi",vi:"Ở đâu",ex:"어디에서 만날까요?"},
+      {kr:"같이",rom:"gachi",vi:"Cùng nhau",ex:"같이 갑시다."},
+      {kr:"좋다",rom:"jota",vi:"Tốt/Thích",ex:"좋습니다!"},
+      {kr:"바쁘다",rom:"bappeuda",vi:"Bận",ex:"오늘은 바쁩니다."},
+      {kr:"괜찮다",rom:"gwaenchanta",vi:"Không sao",ex:"괜찮습니다."},
+      {kr:"기다리다",rom:"gidarida",vi:"Chờ",ex:"조금 기다리세요."},
+      {kr:"늦다",rom:"neutda",vi:"Muộn",ex:"늦어서 죄송합니다."},
+      {kr:"빨리",rom:"ppalli",vi:"Nhanh",ex:"빨리 오세요."},
+      {kr:"천천히",rom:"cheoncheonhi",vi:"Từ từ",ex:"천천히 말해 주세요."},
+      {kr:"문자",rom:"munja",vi:"Tin nhắn",ex:"문자를 보냅니다."}
+    ],
+    grammarDetail:[
+      {pattern:"V + ㄹ/을까요?",meaning:"Chúng ta ... nhé? (đề nghị)",examples:["만날까요?","갈까요?","먹을까요?"]},
+      {pattern:"V + ㅂ/읍시다",meaning:"Hãy cùng... (rủ rê)",examples:["갑시다!","먹읍시다!","만납시다!"]}
+    ]
+  },
+  { id:11, title:"여행", subtitle:"Travel", emoji:"✈️", topics:"Directions, attractions", grammar:["에서","까지"],
+    vocab:[
+      {kr:"여행",rom:"yeohaeng",vi:"Du lịch",ex:"여행을 좋아합니다."},
+      {kr:"공항",rom:"gonghang",vi:"Sân bay",ex:"공항에 갑니다."},
+      {kr:"호텔",rom:"hotel",vi:"Khách sạn",ex:"호텔에서 쉽니다."},
+      {kr:"지도",rom:"jido",vi:"Bản đồ",ex:"지도를 봅니다."},
+      {kr:"왼쪽",rom:"oenjjok",vi:"Bên trái",ex:"왼쪽으로 가세요."},
+      {kr:"오른쪽",rom:"oreunjjok",vi:"Bên phải",ex:"오른쪽에 있습니다."},
+      {kr:"직진",rom:"jikjin",vi:"Đi thẳng",ex:"직진하세요."},
+      {kr:"가깝다",rom:"gakkapda",vi:"Gần",ex:"여기에서 가깝습니다."},
+      {kr:"멀다",rom:"meolda",vi:"Xa",ex:"공항은 멉니다."},
+      {kr:"표",rom:"pyo",vi:"Vé",ex:"표를 삽니다."},
+      {kr:"여권",rom:"yeogwon",vi:"Hộ chiếu",ex:"여권이 있습니다."},
+      {kr:"관광지",rom:"gwangwangji",vi:"Điểm du lịch",ex:"관광지에 갑니다."},
+      {kr:"사진",rom:"sajin",vi:"Ảnh",ex:"사진을 찍습니다."},
+      {kr:"기념품",rom:"ginyeompum",vi:"Quà lưu niệm",ex:"기념품을 삽니다."},
+      {kr:"재미있다",rom:"jaemiitda",vi:"Thú vị",ex:"여행은 재미있습니다."}
+    ],
+    grammarDetail:[
+      {pattern:"N + 에서",meaning:"từ/tại (nơi hành động)",examples:["학교에서 공부합니다.","집에서 쉽니다.","서울에서 출발합니다."]},
+      {pattern:"N + 까지",meaning:"đến (điểm đến)",examples:["서울까지 갑니다.","집까지 걸어갑니다.","공항까지 택시를 탑니다."]}
+    ]
+  },
+  { id:12, title:"취미", subtitle:"Hobbies", emoji:"🎨", topics:"Hobbies, leisure", grammar:["기","좋아하다"],
+    vocab:[
+      {kr:"취미",rom:"chwimi",vi:"Sở thích",ex:"취미가 뭐예요?"},
+      {kr:"운동",rom:"undong",vi:"Thể thao",ex:"운동을 좋아합니다."},
+      {kr:"음악",rom:"eumak",vi:"Âm nhạc",ex:"음악을 듣습니다."},
+      {kr:"영화",rom:"yeonghwa",vi:"Phim",ex:"영화를 봅니다."},
+      {kr:"독서",rom:"dokseo",vi:"Đọc sách",ex:"독서를 좋아합니다."},
+      {kr:"요리",rom:"yori",vi:"Nấu ăn",ex:"요리하기를 좋아합니다."},
+      {kr:"그림",rom:"geurim",vi:"Vẽ",ex:"그림을 그립니다."},
+      {kr:"노래",rom:"norae",vi:"Bài hát",ex:"노래를 부릅니다."},
+      {kr:"춤",rom:"chum",vi:"Nhảy",ex:"춤을 춥니다."},
+      {kr:"게임",rom:"geim",vi:"Game",ex:"게임을 합니다."},
+      {kr:"사진",rom:"sajin",vi:"Chụp ảnh",ex:"사진 찍기를 좋아합니다."},
+      {kr:"등산",rom:"deungsan",vi:"Leo núi",ex:"등산을 합니다."},
+      {kr:"수영",rom:"suyeong",vi:"Bơi",ex:"수영을 합니다."},
+      {kr:"자전거",rom:"jajeongeo",vi:"Xe đạp",ex:"자전거를 탑니다."},
+      {kr:"여행하다",rom:"yeohaenghada",vi:"Du lịch",ex:"여행하기를 좋아합니다."}
+    ],
+    grammarDetail:[
+      {pattern:"V + 기",meaning:"danh từ hóa động từ",examples:["읽기 (việc đọc)","먹기 (việc ăn)","운동하기 (việc tập)"]},
+      {pattern:"V + 기를 좋아하다",meaning:"thích làm gì",examples:["요리하기를 좋아합니다.","노래하기를 좋아합니다.","여행하기를 좋아합니다."]}
+    ]
+  },
+  { id:13, title:"병원", subtitle:"Hospital", emoji:"🏥", topics:"Symptoms, doctor visit", grammar:["아/어서","아프다"],
+    vocab:[
+      {kr:"병원",rom:"byeongwon",vi:"Bệnh viện",ex:"병원에 갑니다."},
+      {kr:"아프다",rom:"apeuda",vi:"Đau",ex:"머리가 아픕니다."},
+      {kr:"머리",rom:"meori",vi:"Đầu",ex:"머리가 아픕니다."},
+      {kr:"배",rom:"bae",vi:"Bụng",ex:"배가 아픕니다."},
+      {kr:"열",rom:"yeol",vi:"Sốt",ex:"열이 있습니다."},
+      {kr:"기침",rom:"gichim",vi:"Ho",ex:"기침을 합니다."},
+      {kr:"감기",rom:"gamgi",vi:"Cảm",ex:"감기에 걸렸습니다."},
+      {kr:"약",rom:"yak",vi:"Thuốc",ex:"약을 먹습니다."},
+      {kr:"의사",rom:"uisa",vi:"Bác sĩ",ex:"의사를 만납니다."},
+      {kr:"간호사",rom:"ganhosa",vi:"Y tá",ex:"간호사가 도와줍니다."},
+      {kr:"목",rom:"mok",vi:"Cổ họng",ex:"목이 아픕니다."},
+      {kr:"눈",rom:"nun",vi:"Mắt",ex:"눈이 아픕니다."},
+      {kr:"이",rom:"i",vi:"Răng",ex:"이가 아픕니다."},
+      {kr:"피곤하다",rom:"pigonhada",vi:"Mệt",ex:"피곤합니다."},
+      {kr:"쉬다",rom:"swida",vi:"Nghỉ ngơi",ex:"집에서 쉬세요."}
+    ],
+    grammarDetail:[
+      {pattern:"V/A + 아/어서",meaning:"vì/bởi vì",examples:["아파서 병원에 갑니다.","피곤해서 쉽니다.","추워서 옷을 입습니다."]},
+      {pattern:"N + 이/가 아프다",meaning:"N bị đau",examples:["머리가 아픕니다.","배가 아픕니다.","목이 아픕니다."]}
+    ]
+  },
+  { id:14, title:"취미와 여가", subtitle:"Free Time", emoji:"🎮", topics:"Weekend, entertainment", grammar:["고 싶다"],
+    vocab:[
+      {kr:"주말",rom:"jumal",vi:"Cuối tuần",ex:"주말에 쉽니다."},
+      {kr:"영화관",rom:"yeonghwagwan",vi:"Rạp phim",ex:"영화관에 갑니다."},
+      {kr:"공원",rom:"gongwon",vi:"Công viên",ex:"공원에서 산책합니다."},
+      {kr:"카페",rom:"kape",vi:"Quán café",ex:"카페에서 커피를 마십니다."},
+      {kr:"쇼핑",rom:"syoping",vi:"Mua sắm",ex:"쇼핑을 합니다."},
+      {kr:"산책",rom:"sanchaek",vi:"Đi dạo",ex:"산책을 합니다."},
+      {kr:"노래방",rom:"noraebang",vi:"Karaoke",ex:"노래방에 갑니다."},
+      {kr:"보다",rom:"boda",vi:"Xem",ex:"영화를 봅니다."},
+      {kr:"듣다",rom:"deutda",vi:"Nghe",ex:"음악을 듣습니다."},
+      {kr:"놀다",rom:"nolda",vi:"Chơi",ex:"친구와 놉니다."},
+      {kr:"재미있다",rom:"jaemiitda",vi:"Thú vị",ex:"영화가 재미있습니다."},
+      {kr:"심심하다",rom:"simsimhada",vi:"Chán",ex:"심심합니다."},
+      {kr:"즐겁다",rom:"jeulgeopda",vi:"Vui",ex:"주말이 즐겁습니다."},
+      {kr:"피곤하다",rom:"pigonhada",vi:"Mệt mỏi",ex:"일 후에 피곤합니다."},
+      {kr:"행복하다",rom:"haengbokhada",vi:"Hạnh phúc",ex:"여행할 때 행복합니다."}
+    ],
+    grammarDetail:[
+      {pattern:"V + 고 싶다",meaning:"muốn làm gì",examples:["여행하고 싶습니다.","먹고 싶습니다.","쉬고 싶습니다."]}
+    ]
+  },
+  { id:15, title:"교통", subtitle:"Transportation", emoji:"🚌", topics:"Transport, city", grammar:["에서~까지","으로"],
+    vocab:[
+      {kr:"버스",rom:"beoseu",vi:"Xe buýt",ex:"버스를 탑니다."},
+      {kr:"지하철",rom:"jihacheol",vi:"Tàu điện ngầm",ex:"지하철을 탑니다."},
+      {kr:"택시",rom:"taeksi",vi:"Taxi",ex:"택시를 탑니다."},
+      {kr:"비행기",rom:"bihaenggi",vi:"Máy bay",ex:"비행기를 탑니다."},
+      {kr:"기차",rom:"gicha",vi:"Tàu hỏa",ex:"기차를 탑니다."},
+      {kr:"역",rom:"yeok",vi:"Ga/Trạm",ex:"역에서 내립니다."},
+      {kr:"정류장",rom:"jeongnyujang",vi:"Trạm xe buýt",ex:"정류장에서 기다립니다."},
+      {kr:"타다",rom:"tada",vi:"Đi/Lên (xe)",ex:"버스를 탑니다."},
+      {kr:"내리다",rom:"naerida",vi:"Xuống",ex:"여기에서 내립니다."},
+      {kr:"걷다",rom:"geotda",vi:"Đi bộ",ex:"학교까지 걷습니다."},
+      {kr:"자동차",rom:"jadongcha",vi:"Ô tô",ex:"자동차로 갑니다."},
+      {kr:"자전거",rom:"jajeongeo",vi:"Xe đạp",ex:"자전거를 탑니다."},
+      {kr:"출발",rom:"chulbal",vi:"Khởi hành",ex:"9시에 출발합니다."},
+      {kr:"도착",rom:"dochak",vi:"Đến nơi",ex:"10시에 도착합니다."},
+      {kr:"길",rom:"gil",vi:"Đường",ex:"이 길로 가세요."}
+    ],
+    grammarDetail:[
+      {pattern:"N에서 N까지",meaning:"từ N đến N",examples:["집에서 학교까지","서울에서 부산까지","여기에서 저기까지"]},
+      {pattern:"N + (으)로",meaning:"bằng (phương tiện)/hướng",examples:["버스로 갑니다.","지하철로 갑니다.","왼쪽으로 가세요."]}
+    ]
+  }
+];
+
+// ===== APP STATE =====
+let currentPage = 'home';
+let currentLesson = null;
+let currentLessonTab = 'vocab';
+let userData = [];
+let flashcardIndex = 0;
+let quizState = { questions:[], current:0, score:0, answers:[] };
+let isDark = false;
+
+// ===== ELEMENT SDK =====
+const defaultConfig = {
+  app_title: "한국어 학습",
+  welcome_message: "Start your Korean journey!",
+  background_color: "#f8fafc",
+  surface_color: "#ffffff",
+  text_color: "#1e293b",
+  primary_color: "#6366f1",
+  secondary_color: "#a855f7"
+};
+
+window.elementSdk.init({
+  defaultConfig,
+  onConfigChange: async (config) => {
+    const title = config.app_title || defaultConfig.app_title;
+    const el = document.getElementById('app-title');
+    if (el) el.textContent = title;
+    document.documentElement.style.setProperty('--primary', config.primary_color || defaultConfig.primary_color);
+    document.documentElement.style.setProperty('--secondary', config.secondary_color || defaultConfig.secondary_color);
+  },
+  mapToCapabilities: (config) => ({
+    recolorables: [
+      { get:()=>config.background_color||defaultConfig.background_color, set:(v)=>{config.background_color=v;window.elementSdk.setConfig({background_color:v})} },
+      { get:()=>config.surface_color||defaultConfig.surface_color, set:(v)=>{config.surface_color=v;window.elementSdk.setConfig({surface_color:v})} },
+      { get:()=>config.text_color||defaultConfig.text_color, set:(v)=>{config.text_color=v;window.elementSdk.setConfig({text_color:v})} },
+      { get:()=>config.primary_color||defaultConfig.primary_color, set:(v)=>{config.primary_color=v;window.elementSdk.setConfig({primary_color:v})} },
+      { get:()=>config.secondary_color||defaultConfig.secondary_color, set:(v)=>{config.secondary_color=v;window.elementSdk.setConfig({secondary_color:v})} }
+    ],
+    borderables: [],
+    fontEditable: { get:()=>config.font_family||'Outfit', set:(v)=>{config.font_family=v;window.elementSdk.setConfig({font_family:v})} },
+    fontSizeable: { get:()=>config.font_size||16, set:(v)=>{config.font_size=v;window.elementSdk.setConfig({font_size:v})} }
+  }),
+  mapToEditPanelValues: (config) => new Map([
+    ["app_title", config.app_title || defaultConfig.app_title],
+    ["welcome_message", config.welcome_message || defaultConfig.welcome_message]
+  ])
+});
+
+// ===== DATA SDK =====
+const dataHandler = {
+  onDataChanged(data) {
+    userData = data;
+    updateUI();
+  }
+};
+
+(async()=>{
+  const r = await window.dataSdk.init(dataHandler);
+  if(!r.isOk) console.error("Data SDK init failed");
+})();
+
+// ===== HELPERS =====
+function getProgress(lessonId) {
+  return userData.filter(d=>d.type==='lesson_complete'&&d.lesson_id===lessonId);
+}
+function getVocabProgress(lessonId) {
+  return userData.filter(d=>d.type==='vocab_learned'&&d.lesson_id===lessonId);
+}
+function getTotalXP() {
+  const xpRecords = userData.filter(d=>d.type==='xp');
+  return xpRecords.reduce((s,r)=>s+(r.xp||0),0);
+}
+function getStreak() {
+  const streakR = userData.filter(d=>d.type==='streak').sort((a,b)=>(b.last_study||'').localeCompare(a.last_study||''));
+  return streakR.length>0 ? (streakR[0].streak||0) : 0;
+}
+function getLessonsCompleted() {
+  return [...new Set(userData.filter(d=>d.type==='lesson_complete').map(d=>d.lesson_id))];
+}
+function getQuizScores() {
+  return userData.filter(d=>d.type==='quiz_score');
+}
+
+async function addXP(amount) {
+  if(userData.length>=999) return;
+  await window.dataSdk.create({type:'xp',xp:amount,lesson_id:currentLesson?.id||0,last_study:new Date().toISOString(),completed:false,vocab_id:'',score:0,streak:0,review_due:'',correct_count:0,incorrect_count:0});
+}
+async function markLessonComplete(lessonId) {
+  if(userData.length>=999) return;
+  const existing = userData.find(d=>d.type==='lesson_complete'&&d.lesson_id===lessonId);
+  if(!existing) {
+    await window.dataSdk.create({type:'lesson_complete',lesson_id:lessonId,completed:true,last_study:new Date().toISOString(),xp:0,vocab_id:'',score:0,streak:0,review_due:'',correct_count:0,incorrect_count:0});
+  }
+}
+async function markVocabLearned(lessonId, vocabId) {
+  if(userData.length>=999) return;
+  const existing = userData.find(d=>d.type==='vocab_learned'&&d.lesson_id===lessonId&&d.vocab_id===vocabId);
+  if(!existing) {
+    await window.dataSdk.create({type:'vocab_learned',lesson_id:lessonId,vocab_id:vocabId,completed:true,last_study:new Date().toISOString(),xp:0,score:0,streak:0,review_due:'',correct_count:0,incorrect_count:0});
+  }
+}
+async function saveQuizScore(lessonId, score) {
+  if(userData.length>=999) return;
+  await window.dataSdk.create({type:'quiz_score',lesson_id:lessonId,score:score,completed:true,last_study:new Date().toISOString(),xp:0,vocab_id:'',streak:0,review_due:'',correct_count:0,incorrect_count:0});
+}
+async function updateStreak() {
+  if(userData.length>=999) return;
+  const today = new Date().toISOString().split('T')[0];
+  const streakRecords = userData.filter(d=>d.type==='streak').sort((a,b)=>(b.last_study||'').localeCompare(a.last_study||''));
+  if(streakRecords.length>0) {
+    const last = streakRecords[0];
+    const lastDate = (last.last_study||'').split('T')[0];
+    if(lastDate===today) return;
+    const yesterday = new Date(Date.now()-86400000).toISOString().split('T')[0];
+    const newStreak = lastDate===yesterday ? (last.streak||0)+1 : 1;
+    await window.dataSdk.update({...last, streak:newStreak, last_study:new Date().toISOString()});
+  } else {
+    await window.dataSdk.create({type:'streak',streak:1,last_study:new Date().toISOString(),lesson_id:0,completed:false,xp:0,vocab_id:'',score:0,review_due:'',correct_count:0,incorrect_count:0});
+  }
+}
+
+function updateUI() {
+  document.getElementById('xp-val').textContent = getTotalXP();
+  document.getElementById('streak-val').textContent = getStreak();
+  if(currentPage==='home') renderHome();
+  if(currentPage==='progress') renderProgress();
+}
+
+// ===== NAVIGATION =====
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    currentPage = btn.dataset.page;
+    currentLesson = null;
+    navigate();
+  });
+});
+
+function navigate() {
+  document.querySelectorAll('.nav-btn').forEach(b=>{
+    b.classList.toggle('tab-active', b.dataset.page===currentPage);
+    b.classList.toggle('text-indigo-500', b.dataset.page===currentPage);
+    b.classList.toggle('dark:text-indigo-400', b.dataset.page===currentPage);
+    b.classList.toggle('text-slate-500', b.dataset.page!==currentPage);
+  });
+  const main = document.getElementById('main-content');
+  switch(currentPage) {
+    case 'home': renderHome(); break;
+    case 'lessons': renderLessons(); break;
+    case 'practice': renderPractice(); break;
+    case 'review': renderReview(); break;
+    case 'progress': renderProgress(); break;
+    default: renderHome();
+  }
+}
+
+// ===== RENDER PAGES =====
+function renderHome() {
+  const completed = getLessonsCompleted().length;
+  const totalVocab = userData.filter(d=>d.type==='vocab_learned').length;
+  const config = window.elementSdk.config || defaultConfig;
+  const welcome = config.welcome_message || defaultConfig.welcome_message;
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+  <div class="fade-in p-4 max-w-2xl mx-auto space-y-5">
+    <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
+      <p class="text-sm opacity-80">${welcome}</p>
+      <h2 class="text-2xl font-bold font-korean mt-1">안녕하세요! 👋</h2>
+      <div class="mt-4 flex gap-4 text-sm">
+        <div class="bg-white/20 rounded-lg px-3 py-2"><span class="font-bold">${completed}</span>/15 lessons</div>
+        <div class="bg-white/20 rounded-lg px-3 py-2"><span class="font-bold">${totalVocab}</span> words</div>
+        <div class="bg-white/20 rounded-lg px-3 py-2">🔥 ${getStreak()} streak</div>
+      </div>
+    </div>
+    <h3 class="font-semibold text-lg">Continue Learning</h3>
+    <div class="grid grid-cols-2 gap-3">
+      ${LESSONS.slice(0,4).map(l=>`
+        <button onclick="openLesson(${l.id})" class="card-hover bg-white dark:bg-slate-800 rounded-xl p-4 text-left border border-slate-200 dark:border-slate-700 shadow-sm">
+          <span class="text-2xl">${l.emoji}</span>
+          <p class="font-korean font-bold mt-2 text-sm">${l.title}</p>
+          <p class="text-xs text-slate-500">${l.subtitle}</p>
+          ${getProgress(l.id).length?'<span class="text-xs text-green-500 font-medium">✓ Done</span>':''}
+        </button>
+      `).join('')}
+    </div>
+    <button onclick="currentPage='lessons';navigate()" class="w-full py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-medium transition">View All Lessons →</button>
+  </div>`;
+}
+
+function renderLessons() {
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+  <div class="fade-in p-4 max-w-2xl mx-auto">
+    <h2 class="text-xl font-bold mb-4">📚 All Lessons</h2>
+    <div class="space-y-3">
+      ${LESSONS.map(l=>{
+        const done = getProgress(l.id).length>0;
+        return `<button onclick="openLesson(${l.id})" class="card-hover w-full flex items-center gap-4 bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm text-left">
+          <span class="text-3xl">${l.emoji}</span>
+          <div class="flex-1">
+            <p class="font-korean font-bold">${l.title}</p>
+            <p class="text-sm text-slate-500">${l.subtitle} • ${l.topics}</p>
+            <p class="text-xs text-slate-400 mt-1">Grammar: ${l.grammar.join(', ')}</p>
+          </div>
+          ${done?'<span class="text-green-500 text-xl">✓</span>':'<i data-lucide="chevron-right" class="w-5 h-5 text-slate-400"></i>'}
+        </button>`;
+      }).join('')}
+    </div>
+  </div>`;
+  lucide.createIcons();
+}
+
+window.openLesson = function(id) {
+  currentLesson = LESSONS.find(l=>l.id===id);
+  currentLessonTab = 'vocab';
+  renderLessonDetail();
+  updateStreak();
+}
+
+function renderLessonDetail() {
+  const l = currentLesson;
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+  <div class="fade-in">
+    <div class="sticky top-0 bg-white dark:bg-slate-800 z-10 border-b border-slate-200 dark:border-slate-700 px-4 py-3">
+      <div class="flex items-center gap-3">
+        <button onclick="currentPage='lessons';navigate()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+        <div>
+          <h2 class="font-korean font-bold text-lg">${l.emoji} ${l.title}</h2>
+          <p class="text-xs text-slate-500">${l.subtitle}</p>
+        </div>
+      </div>
+      <div class="flex gap-1 mt-3 overflow-x-auto pb-1">
+        ${['vocab','grammar','flashcards','quiz'].map(tab=>`
+          <button onclick="currentLessonTab='${tab}';renderLessonContent()" class="lesson-tab px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${currentLessonTab===tab?'bg-indigo-500 text-white':'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}" data-tab="${tab}">
+            ${tab==='vocab'?'📖 Vocabulary':tab==='grammar'?'📝 Grammar':tab==='flashcards'?'🃏 Flashcards':'❓ Quiz'}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+    <div id="lesson-content" class="p-4 max-w-2xl mx-auto"></div>
+  </div>`;
+  lucide.createIcons();
+  renderLessonContent();
+}
+
+window.renderLessonContent = function() {
+  document.querySelectorAll('.lesson-tab').forEach(t=>{
+    t.className = `lesson-tab px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${t.dataset.tab===currentLessonTab?'bg-indigo-500 text-white':'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`;
+  });
+  const container = document.getElementById('lesson-content');
+  switch(currentLessonTab) {
+    case 'vocab': renderVocab(container); break;
+    case 'grammar': renderGrammar(container); break;
+    case 'flashcards': renderFlashcards(container); break;
+    case 'quiz': renderQuiz(container); break;
+  }
+}
+
+function renderVocab(container) {
+  const l = currentLesson;
+  container.innerHTML = `
+  <div class="space-y-3 fade-in">
+    <div class="flex justify-between items-center">
+      <h3 class="font-semibold">Vocabulary (${l.vocab.length} words)</h3>
+      <button onclick="learnAllVocab()" class="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 px-3 py-1 rounded-full font-medium">Mark All Learned</button>
+    </div>
+    ${l.vocab.map((v,i)=>`
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="font-korean text-xl font-bold">${v.kr}</p>
+            <p class="text-sm text-slate-500">${v.rom}</p>
+          </div>
+          <span class="text-sm bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded">${v.vi}</span>
+        </div>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-400 font-korean">${v.ex}</p>
+        <button onclick="speakKorean('${v.kr}')" class="mt-2 text-xs text-indigo-500 flex items-center gap-1"><i data-lucide="volume-2" class="w-3 h-3"></i> Listen</button>
+      </div>
+    `).join('')}
+  </div>`;
+  lucide.createIcons();
+}
+
+window.learnAllVocab = async function() {
+  for(const v of currentLesson.vocab) {
+    await markVocabLearned(currentLesson.id, v.kr);
+  }
+  await addXP(10);
+}
+
+window.speakKorean = function(text) {
+  if('speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang='ko-KR'; u.rate=0.8;
+    speechSynthesis.speak(u);
+  }
+}
+
+function renderGrammar(container) {
+  const l = currentLesson;
+  container.innerHTML = `
+  <div class="space-y-4 fade-in">
+    <h3 class="font-semibold">Grammar Points</h3>
+    ${l.grammarDetail.map(g=>`
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm">
+        <p class="font-korean font-bold text-lg text-indigo-600 dark:text-indigo-400">${g.pattern}</p>
+        <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">${g.meaning}</p>
+        <div class="mt-3 space-y-1">
+          ${g.examples.map(e=>`<p class="text-sm font-korean bg-slate-50 dark:bg-slate-700/50 rounded px-3 py-1.5">${e}</p>`).join('')}
+        </div>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+function renderFlashcards(container) {
+  const l = currentLesson;
+  flashcardIndex = 0;
+  renderFlashcard(container, l);
+}
+
+function renderFlashcard(container, l) {
+  const v = l.vocab[flashcardIndex];
+  container.innerHTML = `
+  <div class="fade-in flex flex-col items-center">
+    <p class="text-sm text-slate-500 mb-3">${flashcardIndex+1} / ${l.vocab.length}</p>
+    <div class="flip-card w-full max-w-sm h-56 cursor-pointer" id="fc" onclick="document.getElementById('fc').classList.toggle('flipped')">
+      <div class="flip-card-inner relative w-full h-full">
+        <div class="flip-card-front absolute w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex flex-col items-center justify-center text-white shadow-lg p-6">
+          <p class="font-korean text-3xl font-bold">${v.kr}</p>
+          <p class="text-sm opacity-70 mt-2">${v.rom}</p>
+          <p class="text-xs opacity-50 mt-4">Tap to flip</p>
+        </div>
+        <div class="flip-card-back absolute w-full h-full bg-white dark:bg-slate-800 rounded-2xl flex flex-col items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-lg p-6">
+          <p class="text-2xl font-bold text-indigo-600">${v.vi}</p>
+          <p class="font-korean text-sm text-slate-500 mt-2">${v.ex}</p>
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button onclick="prevFlashcard()" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-sm font-medium" ${flashcardIndex===0?'disabled':''}><i data-lucide="arrow-left" class="w-4 h-4 inline"></i> Prev</button>
+      <button onclick="speakKorean('${v.kr}')" class="px-4 py-2 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded-lg text-sm font-medium"><i data-lucide="volume-2" class="w-4 h-4 inline"></i></button>
+      <button onclick="nextFlashcard()" class="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm font-medium">Next <i data-lucide="arrow-right" class="w-4 h-4 inline"></i></button>
+    </div>
+  </div>`;
+  lucide.createIcons();
+}
+
+window.nextFlashcard = function() {
+  if(flashcardIndex<currentLesson.vocab.length-1) {
+    flashcardIndex++;
+    renderFlashcard(document.getElementById('lesson-content'), currentLesson);
+  }
+}
+window.prevFlashcard = function() {
+  if(flashcardIndex>0) {
+    flashcardIndex--;
+    renderFlashcard(document.getElementById('lesson-content'), currentLesson);
+  }
+}
+
+function renderQuiz(container) {
+  const l = currentLesson;
+  const questions = l.vocab.sort(()=>Math.random()-0.5).slice(0,5).map(v=>{
+    const wrong = l.vocab.filter(x=>x.kr!==v.kr).sort(()=>Math.random()-0.5).slice(0,3).map(x=>x.vi);
+    const options = [...wrong, v.vi].sort(()=>Math.random()-0.5);
+    return {word:v.kr, rom:v.rom, correct:v.vi, options};
+  });
+  quizState = {questions, current:0, score:0, answers:[]};
+  renderQuizQuestion(container);
+}
+
+function renderQuizQuestion(container) {
+  const q = quizState.questions[quizState.current];
+  if(!q) { renderQuizResult(container); return; }
+  container.innerHTML = `
+  <div class="fade-in max-w-sm mx-auto">
+    <div class="flex justify-between items-center mb-4">
+      <span class="text-sm text-slate-500">Question ${quizState.current+1}/${quizState.questions.length}</span>
+      <span class="text-sm font-medium text-indigo-500">Score: ${quizState.score}</span>
+    </div>
+    <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 text-center text-white mb-4">
+      <p class="font-korean text-3xl font-bold">${q.word}</p>
+      <p class="text-sm opacity-70 mt-1">${q.rom}</p>
+    </div>
+    <p class="text-sm text-slate-500 mb-3">Choose the correct meaning:</p>
+    <div class="space-y-2">
+      ${q.options.map((o,i)=>`
+        <button onclick="answerQuiz(${i})" class="quiz-opt w-full text-left px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-indigo-400 transition text-sm font-medium">${o}</button>
+      `).join('')}
+    </div>
+  </div>`;
+}
+
+window.answerQuiz = function(idx) {
+  const q = quizState.questions[quizState.current];
+  const selected = q.options[idx];
+  const correct = selected === q.correct;
+  if(correct) quizState.score++;
+  quizState.answers.push({correct});
+  
+  // highlight
+  document.querySelectorAll('.quiz-opt').forEach((btn,i)=>{
+    btn.disabled = true;
+    if(q.options[i]===q.correct) btn.classList.add('border-green-500','bg-green-50','dark:bg-green-900/30');
+    else if(i===idx&&!correct) btn.classList.add('border-red-500','bg-red-50','dark:bg-red-900/30');
+  });
+  
+  setTimeout(()=>{
+    quizState.current++;
+    renderQuizQuestion(document.getElementById('lesson-content'));
+  }, 1000);
+}
+
+async function renderQuizResult(container) {
+  const pct = Math.round(quizState.score/quizState.questions.length*100);
+  await saveQuizScore(currentLesson.id, pct);
+  await addXP(quizState.score*5);
+  if(pct>=80) await markLessonComplete(currentLesson.id);
+  container.innerHTML = `
+  <div class="fade-in text-center max-w-sm mx-auto">
+    <div class="text-6xl mb-4">${pct>=80?'🎉':'📚'}</div>
+    <h3 class="text-2xl font-bold">${pct>=80?'Excellent!':'Keep Practicing!'}</h3>
+    <p class="text-slate-500 mt-2">Score: ${quizState.score}/${quizState.questions.length} (${pct}%)</p>
+    <p class="text-indigo-500 font-medium mt-1">+${quizState.score*5} XP earned!</p>
+    ${pct>=80?'<p class="text-green-500 text-sm mt-2">✓ Lesson completed!</p>':''}
+    <div class="flex gap-3 mt-6 justify-center">
+      <button onclick="currentLessonTab='quiz';renderLessonContent()" class="px-4 py-2 bg-indigo-500 text-white rounded-xl text-sm font-medium">Try Again</button>
+      <button onclick="currentPage='lessons';navigate()" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-xl text-sm font-medium">All Lessons</button>
+    </div>
+  </div>`;
+}
+
+function renderPractice() {
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+  <div class="fade-in p-4 max-w-2xl mx-auto space-y-4">
+    <h2 class="text-xl font-bold">✏️ Practice</h2>
+    <p class="text-sm text-slate-500">Choose a lesson to practice</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      ${LESSONS.map(l=>`
+        <button onclick="openLesson(${l.id});currentLessonTab='quiz';renderLessonContent()" class="card-hover bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm text-left flex items-center gap-3">
+          <span class="text-2xl">${l.emoji}</span>
+          <div>
+            <p class="font-korean font-bold text-sm">${l.title}</p>
+            <p class="text-xs text-slate-500">${l.subtitle}</p>
+          </div>
+        </button>
+      `).join('')}
+    </div>
+  </div>`;
+}
+
+function renderReview() {
+  const vocabLearned = userData.filter(d=>d.type==='vocab_learned');
+  const main = document.getElementById('main-content');
+  if(vocabLearned.length===0) {
+    main.innerHTML = `<div class="fade-in p-4 text-center mt-20"><p class="text-4xl mb-4">📖</p><h3 class="font-bold text-lg">No words to review yet</h3><p class="text-slate-500 text-sm mt-2">Complete some lessons first!</p></div>`;
+    return;
+  }
+  // Pick random vocab to review
+  const reviewItems = [];
+  vocabLearned.forEach(d=>{
+    const lesson = LESSONS.find(l=>l.id===d.lesson_id);
+    if(lesson) {
+      const v = lesson.vocab.find(v=>v.kr===d.vocab_id);
+      if(v) reviewItems.push({...v, lessonId:d.lesson_id});
+    }
+  });
+  const items = reviewItems.sort(()=>Math.random()-0.5).slice(0,10);
+  main.innerHTML = `
+  <div class="fade-in p-4 max-w-2xl mx-auto space-y-4">
+    <h2 class="text-xl font-bold">🔄 Review</h2>
+    <p class="text-sm text-slate-500">${items.length} words to review</p>
+    <div class="space-y-3">
+      ${items.map(v=>`
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
+          <div>
+            <p class="font-korean font-bold text-lg">${v.kr}</p>
+            <p class="text-xs text-slate-500">${v.rom}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-sm font-medium text-indigo-600">${v.vi}</p>
+            <button onclick="speakKorean('${v.kr}')" class="text-xs text-slate-400 mt-1"><i data-lucide="volume-2" class="w-3 h-3 inline"></i></button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  </div>`;
+  lucide.createIcons();
+}
+
+function renderProgress() {
+  const completed = getLessonsCompleted().length;
+  const totalVocab = userData.filter(d=>d.type==='vocab_learned').length;
+  const totalXP = getTotalXP();
+  const streak = getStreak();
+  const scores = getQuizScores();
+  const avgScore = scores.length ? Math.round(scores.reduce((s,r)=>s+(r.score||0),0)/scores.length) : 0;
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+  <div class="fade-in p-4 max-w-2xl mx-auto space-y-5">
+    <h2 class="text-xl font-bold">📊 Progress</h2>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 text-center">
+        <p class="text-3xl font-bold text-indigo-500">${completed}</p>
+        <p class="text-xs text-slate-500 mt-1">Lessons Done</p>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 text-center">
+        <p class="text-3xl font-bold text-purple-500">${totalVocab}</p>
+        <p class="text-xs text-slate-500 mt-1">Words Learned</p>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 text-center">
+        <p class="text-3xl font-bold text-amber-500">${totalXP}</p>
+        <p class="text-xs text-slate-500 mt-1">Total XP</p>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 text-center">
+        <p class="text-3xl font-bold text-orange-500">${streak}</p>
+        <p class="text-xs text-slate-500 mt-1">Day Streak</p>
+      </div>
+    </div>
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+      <h3 class="font-semibold mb-3">Lesson Progress</h3>
+      <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
+        <div class="bg-gradient-to-r from-indigo-500 to-purple-500 h-3 rounded-full transition-all" style="width:${(completed/15*100)}%"></div>
+      </div>
+      <p class="text-xs text-slate-500 mt-2">${completed}/15 lessons • Avg quiz score: ${avgScore}%</p>
+    </div>
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+      <h3 class="font-semibold mb-3">🏆 Achievements</h3>
+      <div class="flex flex-wrap gap-2">
+        ${completed>=1?'<span class="bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 text-xs px-3 py-1 rounded-full">🌱 First Lesson</span>':''}
+        ${completed>=5?'<span class="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs px-3 py-1 rounded-full">📚 Five Down</span>':''}
+        ${completed>=10?'<span class="bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs px-3 py-1 rounded-full">🚀 Halfway There</span>':''}
+        ${completed>=15?'<span class="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-xs px-3 py-1 rounded-full">👑 Course Complete</span>':''}
+        ${totalVocab>=50?'<span class="bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300 text-xs px-3 py-1 rounded-full">📖 Word Collector</span>':''}
+        ${streak>=7?'<span class="bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 text-xs px-3 py-1 rounded-full">🔥 Week Warrior</span>':''}
+        ${completed===0&&totalVocab===0?'<span class="text-xs text-slate-400">Start learning to earn badges!</span>':''}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ===== THEME TOGGLE =====
+document.getElementById('theme-toggle').addEventListener('click',()=>{
+  isDark=!isDark;
+  document.documentElement.classList.toggle('dark',isDark);
+});
+
+// ===== INIT =====
+navigate();
+lucide.createIcons();
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a04f51e47cb48170',t:'MTc4MDMyODQ1OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
