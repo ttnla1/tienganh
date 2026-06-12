@@ -127,11 +127,20 @@ function loadState() {
             if (state.lastStudyDate !== yesterday) state.streak = 0;
             state.todayLearned = 0;
         }
+        // Load imported vocabulary
+        const savedVocab = localStorage.getItem('vocabmaster_vocab');
+        if (savedVocab) {
+            VOCAB = JSON.parse(savedVocab);
+        }
     } catch(e) {}
 }
 
 function saveState() {
     try { localStorage.setItem('vocabmaster_state', JSON.stringify(state)); } catch(e) {}
+}
+
+function saveVocab() {
+    try { localStorage.setItem('vocabmaster_vocab', JSON.stringify(VOCAB)); } catch(e) {}
 }
 
 function recordStudy() {
@@ -291,6 +300,10 @@ function renderLearn(el) {
         return;
     }
     showLearnCard(el);
+}
+
+function getNewWords() {
+    return VOCAB.filter(v => getWordProgress(v.word).stage === 'new');
 }
 
 function showLearnCard(el) {
@@ -963,6 +976,7 @@ function confirmImport() {
     }
 
     VOCAB.push(...importPreview);
+    saveVocab();
 
     const msg = `✅ Imported ${importPreview.length} word${importPreview.length !== 1 ? 's' : ''}!`;
     const list = document.getElementById('preview-list');
@@ -999,5 +1013,5 @@ if (state.settings.theme === 'dark') document.documentElement.classList.add('dar
 navigate('dashboard');
 lucide.createIcons();
 </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a0a9d67ce28f9624',t:'MTc4MTI3NzYwOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a0a9e22616da9624',t:'MTc4MTI3ODA4Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
